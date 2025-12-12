@@ -115,12 +115,12 @@ class ContentPlanner:
         self,
         api_key: str = None,
         base_url: str = None,
-        model: str = "gpt-4o",
+        model: str = None,
     ):
         import os
         self.api_key = api_key or os.getenv("RAG_LLM_API_KEY", "")
         self.base_url = base_url or os.getenv("RAG_LLM_BASE_URL")
-        self.model = model
+        self.model = model or os.getenv("LLM_MODEL", "gpt-4o")  # Read from env, fallback to default
         
         kwargs = {"api_key": self.api_key}
         if self.base_url:

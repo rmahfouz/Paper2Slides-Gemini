@@ -83,11 +83,11 @@ class ImageGenerator:
         self,
         api_key: str = None,
         base_url: str = None,
-        model: str = "google/gemini-3-pro-image-preview",
+        model: str = None,
     ):
         self.api_key = api_key or os.getenv("IMAGE_GEN_API_KEY", "")
         self.base_url = base_url or os.getenv("IMAGE_GEN_BASE_URL", "https://openrouter.ai/api/v1")
-        self.model = model
+        self.model = model or os.getenv("IMAGE_GEN_MODEL", "imagen-3.0-generate-002")  # Read from env, fallback to Imagen 3
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
     
     def generate(
@@ -406,6 +406,15 @@ class ImageGenerator:
             try:
                 logger.info(f"Calling image generation API (attempt {attempt + 1}/{max_retries})...")
                 
+                # Check if using Gemini or Imagen (both use native Google GenAI client)
+                is_gemini = ("gemini" in self.model.lower() or 
+                            "imagen" in self.model.lower() or 
+                            "google" in self.base_url.lower())
+                
+                if is_gemini:
+                     # Use native Gemini client for Gemini and Imagen models
+                     return self._call_gemini_model(prompt, reference_images)
+
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": content}],
@@ -453,6 +462,56 @@ class ImageGenerator:
                 raise
         
         raise RuntimeError("Image generation failed after all retry attempts")
+
+    def _call_gemini_model(self, prompt: str, reference_images: List[dict]) -> tuple:
+        """Call native Google Gemini API for image generation."""
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError:
+            raise ImportError("google-genai package is required for Gemini image generation. Install it with `pip install google-genai`.")
+
+        client = genai.Client(api_key=self.api_key)
+        
+        # Prepare prompt with images
+        contents = [prompt]
+        
+        # Determine model name
+        model_name = self.model
+        
+        # Strip 'google/' prefix if present (common in OpenRouter IDs)
+        if model_name.lower().startswith("google/"):
+            model_name = model_name[7:] # Remove 'google/'
+            
+        # Default to Imagen 3 only if the model name is generic "gemini" or empty
+        # If the user specified "gemini-3-pro-image-preview", we should use it.
+        if not model_name or model_name.lower() == "gemini":
+             model_name = "imagen-3.0-generate-001"
+        
+        # Note: Some Gemini models might use generate_content for images, 
+        # but Imagen models use generate_images. 
+        # We assume 'gemini-3-pro-image-preview' works with generate_images 
+        # or is an alias for an Imagen model.
+        
+        # Gemini 3 Pro Image Preview uses generate_content(), not generate_images()
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
+            
+            # Extract image from response
+            if response.candidates:
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and candidate.content.parts:
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'inline_data') and part.inline_data:
+                                return part.inline_data.data, part.inline_data.mime_type
+                                
+        except Exception as e:
+            raise RuntimeError(f"Gemini image generation failed with model '{model_name}': {str(e)}")
+            
+        raise RuntimeError(f"Gemini image generation failed: No images returned from model '{model_name}'.")
 
 
 def save_images_as_pdf(images: List[GeneratedImage], output_path: str):

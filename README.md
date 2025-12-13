@@ -58,6 +58,40 @@ python -m paper2slides --input paper.pdf --output slides --style doraemon --leng
 
 ---
 
+## 🌟 Gemini API Support
+
+This fork adds **Google Gemini API** support for both text generation and image generation!
+
+### 🚀 Supported Models
+
+- **Text/Planning**: `gemini-3-pro-preview` (Gemini 3 PRO)
+- **Image Generation**: `gemini-3-pro-image-preview` (Nano Banana Pro)
+
+### ⚙️ Configuration
+
+Create a `.env` file in the `paper2slides/` directory:
+
+```env
+# RAG (Text & Embeddings)
+RAG_LLM_API_KEY="your_gemini_api_key_here"
+RAG_LLM_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
+LLM_MODEL="gemini-3-pro-preview"
+
+# Image Generation  
+IMAGE_GEN_API_KEY="your_gemini_api_key_here"
+IMAGE_GEN_MODEL="gemini-3-pro-image-preview"
+```
+
+Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+
+### 📝 Credits
+
+This fork is based on the original [Paper2Slides](https://github.com/Yikai-Wang/Paper2Slides) project by [Yikai-Wang](https://github.com/Yikai-Wang). All credit for the core functionality goes to the original authors.
+
+**Gemini Integration**: Added by [rmahfouz](https://github.com/rmahfouz)
+
+---
+
 ## 🎨 Custom Styling Showcase
 
 <div align="center">
